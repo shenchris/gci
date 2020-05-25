@@ -1,0 +1,142 @@
+# 2.3.6 (7eab80676): /usr/local/etc/dovecot/dovecot.conf
+# Pigeonhole version 0.5.6 (92dc263a)
+# OS: FreeBSD 11.3-RELEASE-p2 amd64  ufs
+# Hostname: mail.hs.ntnu.edu.tw
+auth_mechanisms = plain login
+dict {
+  expire = mysql:/usr/local/etc/dovecot-dict-expire.conf
+  quota = mysql:/usr/local/etc/dovecot-dict-quota.conf
+}
+disable_plaintext_auth = no
+first_valid_gid = 1000
+first_valid_uid = 1000
+imap_capability = +SPECIAL-USE
+last_valid_gid = 1000
+last_valid_uid = 1000
+login_greeting = HSNU Dovecot ready.
+mail_debug = yes
+mail_location = maildir:/var/vmail/%d/%n
+mail_privileged_group = mail
+managesieve_notify_capability = mailto
+managesieve_sieve_capability = fileinto reject envelope encoded-character vacation subaddress comparator-i;ascii-numeric relational regex imap4flags copy include variables body enotify environment mailbox date index ihave duplicate mime foreverypart extracttext
+namespace inbox {
+  inbox = yes
+  location = 
+  mailbox Archives {
+    auto = subscribe
+    special_use = \Archive
+  }
+  mailbox Drafts {
+    auto = subscribe
+    special_use = \Drafts
+  }
+  mailbox Junk {
+    auto = subscribe
+    autoexpunge = 60 days
+    special_use = \Junk
+  }
+  mailbox Sent {
+    auto = subscribe
+    special_use = \Sent
+  }
+  mailbox Trash {
+    auto = subscribe
+    autoexpunge = 60 days
+    special_use = \Trash
+  }
+  prefix = 
+}
+passdb {
+  args = /usr/local/etc/dovecot-sql.conf
+  driver = sql
+}
+plugin {
+  expire = Trash 14 Trash/* 14 Junk 14 Junk/* 14
+  expire_dict = proxy::expire
+  quota = dict:Quota::proxy::quota
+  quota_rule = *:storage=100M
+  quota_rule2 = Trash:storage=+100M
+  quota_warning = storage=90%% /root/scripts/quota-warning.sh 90
+  quota_warning2 = storage=50%% /root/scripts/quota-warning.sh 50
+  sieve = file:~/sieve;active=~/.dovecot.sieve
+  sieve_after = /usr/local/etc/dovecot/dovecot.sieve
+}
+protocols = imap sieve
+service auth {
+  unix_listener /var/spool/postfix/private/auth {
+    group = postfix
+    mode = 0660
+    user = postfix
+  }
+  unix_listener auth-master {
+    mode = 0600
+    user = vmail
+  }
+  user = root
+}
+service dict {
+  unix_listener dict {
+    mode = 0600
+    user = vmail
+  }
+}
+service imap-login {
+  inet_listener imap {
+    address = 127.0.0.1
+    port = 143
+  }
+  inet_listener imaps {
+    address = *
+    port = 993
+  }
+}
+service imap {
+  executable = /root/scripts/last_login.sh
+}
+service managesieve-login {
+  inet_listener sieve {
+    port = 4190
+  }
+  inet_listener sieve_deprecated {
+    port = 2000
+  }
+  service_count = 0
+  vsz_limit = 1 G
+}
+service stats {
+  unix_listener stats-reader {
+    group = vmail
+    mode = 0660
+    user = vmail
+  }
+  unix_listener stats-writer {
+    group = vmail
+    mode = 0660
+    user = vmail
+  }
+}
+ssl_cert = </etc/ssl/2020/server.crt
+ssl_dh = # hidden, use -P to show it
+ssl_key = # hidden, use -P to show it
+userdb {
+  driver = prefetch
+}
+userdb {
+  args = /usr/local/etc/dovecot-sql.conf
+  driver = sql
+}
+verbose_proctitle = yes
+protocol imap {
+  imap_client_workarounds = delay-newmail tb-extra-mailbox-sep
+  mail_plugins = quota imap_quota expire
+}
+protocol pop3 {
+  pop3_client_workarounds = outlook-no-nuls oe-ns-eoh
+  pop3_uidl_format = %08Xu%08Xv
+}
+protocol lda {
+  hostname = mail.hs.ntnu.edu.tw
+  mail_plugins = quota expire sieve
+  postmaster_address = postmaster@hs.ntnu.edu.tw
+  sendmail_path = /usr/local/sbin/sendmail
+}
